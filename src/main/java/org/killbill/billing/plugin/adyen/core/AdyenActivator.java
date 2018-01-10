@@ -16,11 +16,14 @@
 
 package org.killbill.billing.plugin.adyen.core;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Hashtable;
 
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 
+import org.jooq.SQLDialect;
 import org.killbill.billing.osgi.api.OSGIPluginProperties;
 import org.killbill.billing.osgi.libs.killbill.KillbillActivatorBase;
 import org.killbill.billing.payment.plugin.api.PaymentPluginApi;
@@ -40,6 +43,8 @@ import org.killbill.billing.plugin.service.Healthcheck;
 import org.killbill.clock.Clock;
 import org.killbill.clock.DefaultClock;
 import org.osgi.framework.BundleContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AdyenActivator extends KillbillActivatorBase {
 
@@ -50,12 +55,16 @@ public class AdyenActivator extends KillbillActivatorBase {
     private AdyenHostedPaymentPageConfigurationHandler adyenHostedPaymentPageConfigurationHandler;
     private AdyenRecurringConfigurationHandler adyenRecurringConfigurationHandler;
 
+    private static final Logger logger = LoggerFactory.getLogger(AdyenActivator.class);
+
+
     @Override
     public void start(final BundleContext context) throws Exception {
+
+        logger.info("Starting plugin: {}", PLUGIN_NAME);
         super.start(context);
 
         final Clock clock = new DefaultClock();
-        final AdyenDao dao = new AdyenDao(dataSource.getDataSource());
 
         final String region = PluginEnvironmentConfig.getRegion(configProperties.getProperties());
         adyenConfigurationHandler = new AdyenConfigurationHandler(PLUGIN_NAME, killbillAPI, logService, region);
@@ -74,6 +83,11 @@ public class AdyenActivator extends KillbillActivatorBase {
 
         final AdyenRecurringClient globalAdyenRecurringClient = adyenRecurringConfigurationHandler.createConfigurable(configProperties.getProperties());
         adyenRecurringConfigurationHandler.setDefaultConfigurable(globalAdyenRecurringClient);
+
+        final SQLDialect dialect = determineSqlDialect();
+        final AdyenDao dao = new AdyenDao(dataSource.getDataSource(), dialect, adyenConfigProperties);
+
+        logger.info("Activating plugin with datasource: '{}' and dialect: '{}'", dataSource.getDataSource(), dialect);
 
         // Expose the healthcheck, so other plugins can check on the Adyen status
         final AdyenHealthcheck adyenHealthcheck = new AdyenHealthcheck(adyenConfigPropertiesConfigurationHandler);
@@ -128,4 +142,33 @@ public class AdyenActivator extends KillbillActivatorBase {
         props.put(OSGIPluginProperties.PLUGIN_NAME_PROP, PLUGIN_NAME);
         registrar.registerService(context, Healthcheck.class, healthcheck, props);
     }
+
+    private SQLDialect determineSqlDialect() throws SQLException {
+
+        String databaseProductName = determineDatabaseProductName();
+
+        if ("H2".equalsIgnoreCase(databaseProductName)) {
+            return SQLDialect.H2;
+        } else if ("MySQL".equalsIgnoreCase(databaseProductName)) {
+            return SQLDialect.MYSQL;
+        } else if ("PostgreSQL".equalsIgnoreCase(databaseProductName)) {
+            return SQLDialect.POSTGRES;
+        }
+        throw new IllegalArgumentException("Unsupported DB engine: " + databaseProductName);
+    }
+
+    private String determineDatabaseProductName() throws SQLException {
+        Connection connection = null;
+        String databaseProductName = null;
+        try {
+            connection = dataSource.getDataSource().getConnection();
+            databaseProductName = connection.getMetaData().getDatabaseProductName();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+        return databaseProductName;
+    }
+
 }

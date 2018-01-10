@@ -31,12 +31,16 @@ import javax.annotation.Nullable;
 import javax.sql.DataSource;
 
 import org.joda.time.DateTime;
+import org.jooq.SQLDialect;
 import org.jooq.UpdateSetMoreStep;
+import org.jooq.conf.MappedSchema;
+import org.jooq.conf.RenderNameStyle;
 import org.jooq.impl.DSL;
 import org.killbill.billing.catalog.api.Currency;
 import org.killbill.billing.payment.api.PluginProperty;
 import org.killbill.billing.payment.api.TransactionType;
 import org.killbill.billing.plugin.adyen.api.AdyenPaymentPluginApi;
+import org.killbill.billing.plugin.adyen.client.AdyenConfigProperties;
 import org.killbill.billing.plugin.adyen.client.model.NotificationItem;
 import org.killbill.billing.plugin.adyen.client.model.PaymentModificationResponse;
 import org.killbill.billing.plugin.adyen.client.model.PaymentServiceProviderResult;
@@ -48,7 +52,10 @@ import org.killbill.billing.plugin.adyen.dao.gen.tables.records.AdyenNotificatio
 import org.killbill.billing.plugin.adyen.dao.gen.tables.records.AdyenPaymentMethodsRecord;
 import org.killbill.billing.plugin.adyen.dao.gen.tables.records.AdyenResponsesRecord;
 import org.killbill.billing.plugin.api.PluginProperties;
+import org.killbill.billing.plugin.api.payment.PluginPaymentPluginApi;
 import org.killbill.billing.plugin.dao.payment.PluginPaymentDao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
@@ -69,11 +76,53 @@ import static org.killbill.billing.plugin.adyen.dao.gen.tables.AdyenResponses.AD
 
 public class AdyenDao extends PluginPaymentDao<AdyenResponsesRecord, AdyenResponses, AdyenPaymentMethodsRecord, AdyenPaymentMethods> {
 
+    private static final Logger logger = LoggerFactory.getLogger(AdyenDao.class);
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Joiner JOINER = Joiner.on(",");
 
     public AdyenDao(final DataSource dataSource) throws SQLException {
         super(AdyenResponses.ADYEN_RESPONSES, AdyenPaymentMethods.ADYEN_PAYMENT_METHODS, dataSource);
+    }
+
+    public AdyenDao(DataSource dataSource, SQLDialect dialect) throws SQLException {
+        super(AdyenResponses.ADYEN_RESPONSES, AdyenPaymentMethods.ADYEN_PAYMENT_METHODS, dataSource, dialect);
+    }
+
+    public AdyenDao(DataSource dataSource, SQLDialect dialect, AdyenConfigProperties configProperties) throws SQLException {
+        super(AdyenResponses.ADYEN_RESPONSES, AdyenPaymentMethods.ADYEN_PAYMENT_METHODS, dataSource, dialect);
+        overrideSettings(configProperties);
+    }
+
+
+    void overrideSettings(AdyenConfigProperties configProperties) {
+
+        String targetSchema = configProperties.getSchema();
+        if (null != targetSchema && targetSchema.trim().length() > 0) {
+            List<MappedSchema> schemas= settings.getRenderMapping().getSchemata();
+            for (MappedSchema schema: schemas) {
+                if (schema.getInput().equals(DEFAULT_SCHEMA_NAME)) {
+                    schema.setOutput(targetSchema);
+                }
+                logger.info("Output schema overridden by configuration.  input: '{}' mapped to output: '{}'", schema.getInput(), schema.getOutput());
+            }
+        } else {
+            logger.info("Default schema mapping used");
+        }
+
+        String renderCatalogProp = configProperties.getRenderCatalog();
+        if (null != renderCatalogProp && renderCatalogProp.trim().length() > 0) {
+            boolean renderCatalog = Boolean.parseBoolean(renderCatalogProp);
+            settings.setRenderCatalog(renderCatalog);
+            logger.info("Setting renderCatalog overridden.  value: '{}'", renderCatalog);
+        }
+
+        String renderSchemaProp = configProperties.getRenderSchema();
+        if (null != renderSchemaProp && renderSchemaProp.trim().length() > 0) {
+            boolean renderSchema = Boolean.parseBoolean(renderSchemaProp);
+            settings.setRenderCatalog(renderSchema);
+            logger.info("Setting renderSchema overridden.  value: '{}'", renderSchema);
+        }
     }
 
     // Payment methods
@@ -94,6 +143,118 @@ public class AdyenDao extends PluginPaymentDao<AdyenResponsesRecord, AdyenRespon
                     }
                 });
     }
+
+    @Override
+    public void addPaymentMethod(final UUID kbAccountId, final UUID kbPaymentMethodId, final boolean isDefault,
+                                 final Map<String, String> properties, final DateTime utcNow, final UUID kbTenantId) throws SQLException {
+
+        if (!dialect.equals(SQLDialect.POSTGRES)) {
+            super.addPaymentMethod(kbAccountId, kbPaymentMethodId, isDefault, properties, utcNow, kbTenantId);
+            return;
+        }
+
+        addPaymentMethodWithoutTableNames(kbAccountId, kbPaymentMethodId, isDefault, properties, utcNow, kbTenantId);
+    }
+
+    protected void addPaymentMethodWithoutTableNames(final UUID kbAccountId, final UUID kbPaymentMethodId, final boolean isDefault,
+                                                     final Map<String, String> properties, final DateTime utcNow, final UUID kbTenantId) throws SQLException {
+
+        /* Clone our properties, what we have been given might be unmodifiable */
+        final Map<String, String> clonedProperties = new HashMap<String, String>(properties);
+
+        /* Extract and remove known values from the properties map that will become "additional data" */
+        final String token               = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_TOKEN);
+        final String ccFirstName         = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_FIRST_NAME);
+        final String ccLastName          = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_LAST_NAME);
+        final String ccType              = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_TYPE);
+        final String ccExpirationMonth   = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_EXPIRATION_MONTH);
+        final String ccExpirationYear    = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_EXPIRATION_YEAR);
+        final String ccNumber            = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_NUMBER);
+        final String ccStartMonth        = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_START_MONTH);
+        final String ccStartYear         = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_START_YEAR);
+        final String ccIssueNumber       = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_ISSUE_NUMBER);
+        final String ccVerificationValue = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_VERIFICATION_VALUE);
+        final String ccTrackData         = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CC_TRACK_DATA);
+        final String address1            = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_ADDRESS1);
+        final String address2            = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_ADDRESS2);
+        final String city                = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_CITY);
+        final String state               = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_STATE);
+        final String zip                 = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_ZIP);
+        final String country             = clonedProperties.remove(PluginPaymentPluginApi.PROPERTY_COUNTRY);
+
+        /* Calculate last 4 digits of the credit card number */
+        final String ccLast4 = ccNumber == null ? null : ccNumber.substring(ccNumber.length() - 4, ccNumber.length());
+
+        /* Calculate the additional data to store */
+        final String additionalData = asString(clonedProperties);
+
+        /* Store computed data */
+        execute(dataSource.getConnection(),
+                new WithConnectionCallback<Void>() {
+                    @Override
+                    public Void withConnection(final Connection conn) throws SQLException {
+                        DSL.using(conn, dialect, settings)
+                           .insertInto(paymentMethodsTable,
+                                       DSL.field(KB_ACCOUNT_ID),
+                                       DSL.field(KB_PAYMENT_METHOD_ID),
+                                       DSL.field(TOKEN),
+                                       DSL.field(CC_FIRST_NAME),
+                                       DSL.field(CC_LAST_NAME),
+                                       DSL.field(CC_TYPE),
+                                       DSL.field(CC_EXP_MONTH),
+                                       DSL.field(CC_EXP_YEAR),
+                                       DSL.field(CC_NUMBER),
+                                       DSL.field(CC_LAST_4),
+                                       DSL.field(CC_START_MONTH),
+                                       DSL.field(CC_START_YEAR),
+                                       DSL.field(CC_ISSUE_NUMBER),
+                                       DSL.field(CC_VERIFICATION_VALUE),
+                                       DSL.field(CC_TRACK_DATA),
+                                       DSL.field(ADDRESS1),
+                                       DSL.field(ADDRESS2),
+                                       DSL.field(CITY),
+                                       DSL.field(STATE),
+                                       DSL.field(ZIP),
+                                       DSL.field(COUNTRY),
+                                       DSL.field(IS_DEFAULT),
+                                       DSL.field(IS_DELETED),
+                                       DSL.field(ADDITIONAL_DATA),
+                                       DSL.field(CREATED_DATE),
+                                       DSL.field(UPDATED_DATE),
+                                       DSL.field(KB_TENANT_ID))
+                           .values(kbAccountId.toString(),
+                                   kbPaymentMethodId.toString(),
+                                   token,
+                                   ccFirstName,
+                                   ccLastName,
+                                   ccType,
+                                   ccExpirationMonth,
+                                   ccExpirationYear,
+                                   ccNumber,
+                                   ccLast4,
+                                   ccStartMonth,
+                                   ccStartYear,
+                                   ccIssueNumber,
+                                   ccVerificationValue,
+                                   ccTrackData,
+                                   address1,
+                                   address2,
+                                   city,
+                                   state,
+                                   zip,
+                                   country,
+                                   isDefault ? TRUE : FALSE,
+                                   FALSE,
+                                   additionalData,
+                                   toTimestamp(utcNow),
+                                   toTimestamp(utcNow),
+                                   kbTenantId.toString())
+                           .execute();
+                        return null;
+                    }
+                });
+    }
+
 
     // HPP requests
 

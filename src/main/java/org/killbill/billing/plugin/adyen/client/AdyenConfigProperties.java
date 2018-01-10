@@ -95,6 +95,9 @@ public class AdyenConfigProperties {
     private final Period pending3DsPaymentExpirationPeriod;
 
     private final String currentRegion;
+    private final String schema;
+    private final String renderCatalog;
+    private final String renderSchema;
 
     public AdyenConfigProperties(final Properties properties) {
         this(properties, null);
@@ -185,6 +188,9 @@ public class AdyenConfigProperties {
             final String secretAlgorithm = countryOrSkinToSecretAlgorithmMap.get(countryOrSkin);
             skinToSecretAlgorithmMap.put(skin, secretAlgorithm);
         }
+        this.schema = properties.getProperty(PROPERTY_PREFIX + "schema");
+        this.renderCatalog = properties.getProperty(PROPERTY_PREFIX + "renderCatalog");
+        this.renderSchema = properties.getProperty(PROPERTY_PREFIX + "renderSchema");
     }
 
     private Period readPendingExpirationProperty(final Properties properties) {
@@ -364,6 +370,18 @@ public class AdyenConfigProperties {
         return recurringReadTimeout;
     }
 
+    public String getSchema() {
+        return schema;
+    }
+
+    public String getRenderCatalog() {
+        return renderCatalog;
+    }
+
+    public String getRenderSchema() {
+        return renderSchema;
+    }
+
     private static String adjustCountryCode(final String countryIsoCode) {
         if (Strings.isNullOrEmpty(countryIsoCode)) {
             return null;
@@ -404,4 +422,5 @@ public class AdyenConfigProperties {
             }
         }
     }
+
 }
