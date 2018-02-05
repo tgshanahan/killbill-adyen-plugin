@@ -37,9 +37,7 @@ public class AdyenConfigPropertiesConfigurationHandler extends PluginTenantConfi
     private final String configKeyName;
     private final String region;
     private final OSGIKillbillLogService osgiKillbillLogService;
-
-    private static final String ENC_PREFIX = "ENC(";
-    private static final String ENC_SUFFIX = ")";
+    private final Decryptor decryptor;
 
     public AdyenConfigPropertiesConfigurationHandler(final String pluginName,
                                                      final OSGIKillbillAPI osgiKillbillAPI,
@@ -49,6 +47,7 @@ public class AdyenConfigPropertiesConfigurationHandler extends PluginTenantConfi
         this.configKeyName = "PLUGIN_CONFIG_" + pluginName;
         this.region = region;
         this.osgiKillbillLogService = osgiKillbillLogService;
+        this.decryptor = DecryptorFactory.getInstance().getDecryptor();
     }
 
     @Override
@@ -66,24 +65,11 @@ public class AdyenConfigPropertiesConfigurationHandler extends PluginTenantConfi
         final Properties properties = new Properties();
         try {
             properties.load(new StringReader(tenantConfigurationAsString));
-            decryptProperties(properties);
+            decryptor.decryptProperties(properties);
             return properties;
         } catch (final IOException e) {
             osgiKillbillLogService.log(LogService.LOG_WARNING, "Exception while loading properties for key " + configKeyName, e);
             return null;
-        }
-    }
-
-    protected void decryptProperties(Properties properties) {
-        Decryptor encryptor = new JasyptDecryptor(osgiKillbillLogService);
-        Enumeration keys = properties.keys();
-        while (keys.hasMoreElements()) {
-            final String key = (String) keys.nextElement();
-            final String value = (String) properties.get(key);
-            String decryptableValue = StringUtils.substringBetween(value, ENC_PREFIX, ENC_SUFFIX);
-            if (decryptableValue != null) {
-                properties.setProperty(key, encryptor.decrypt(decryptableValue));
-            }
         }
     }
 

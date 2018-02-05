@@ -17,7 +17,12 @@
 
 package org.killbill.billing.plugin.adyen.core;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.Properties;
+import java.util.UUID;
+
+import javax.annotation.Nullable;
 
 import org.killbill.billing.osgi.libs.killbill.OSGIKillbillAPI;
 import org.killbill.billing.osgi.libs.killbill.OSGIKillbillLogService;
@@ -27,10 +32,14 @@ import org.killbill.billing.plugin.adyen.client.jaxws.LoggingInInterceptor;
 import org.killbill.billing.plugin.adyen.client.jaxws.LoggingOutInterceptor;
 import org.killbill.billing.plugin.adyen.client.recurring.AdyenRecurringClient;
 import org.killbill.billing.plugin.api.notification.PluginTenantConfigurableConfigurationHandler;
+import org.osgi.service.log.LogService;
 
 public class AdyenRecurringConfigurationHandler extends PluginTenantConfigurableConfigurationHandler<AdyenRecurringClient> {
 
     private final String region;
+    private final OSGIKillbillLogService osgiKillbillLogService;
+    private final Decryptor decryptor;
+
 
     public AdyenRecurringConfigurationHandler(final String pluginName,
                                               final OSGIKillbillAPI osgiKillbillAPI,
@@ -38,6 +47,8 @@ public class AdyenRecurringConfigurationHandler extends PluginTenantConfigurable
                                               final String region) {
         super(pluginName, osgiKillbillAPI, osgiKillbillLogService);
         this.region = region;
+        this.osgiKillbillLogService = osgiKillbillLogService;
+        this.decryptor = DecryptorFactory.getInstance().getDecryptor();
     }
 
     @Override
@@ -49,4 +60,23 @@ public class AdyenRecurringConfigurationHandler extends PluginTenantConfigurable
         final AdyenConfigProperties adyenConfigProperties = new AdyenConfigProperties(properties, region);
         return new AdyenRecurringClient(adyenConfigProperties, loggingInInterceptor, loggingOutInterceptor, httpHeaderInterceptor);
     }
+
+    @Override
+    protected Properties getTenantConfigurationAsProperties(@Nullable final UUID kbTenantId) {
+        final String tenantConfigurationAsString = getTenantConfigurationAsString(kbTenantId);
+        if (tenantConfigurationAsString == null) {
+            return null;
+        }
+
+        final Properties properties = new Properties();
+        try {
+            properties.load(new StringReader(tenantConfigurationAsString));
+            decryptor.decryptProperties(properties);
+            return properties;
+        } catch (final IOException e) {
+            osgiKillbillLogService.log(LogService.LOG_WARNING, "Exception while loading properties for tenant " + kbTenantId, e);
+            return null;
+        }
+    }
+
 }

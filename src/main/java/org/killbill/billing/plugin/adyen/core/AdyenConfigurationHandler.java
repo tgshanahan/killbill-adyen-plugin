@@ -17,7 +17,12 @@
 
 package org.killbill.billing.plugin.adyen.core;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.Properties;
+import java.util.UUID;
+
+import javax.annotation.Nullable;
 
 import org.killbill.billing.osgi.libs.killbill.OSGIKillbillAPI;
 import org.killbill.billing.osgi.libs.killbill.OSGIKillbillLogService;
@@ -34,10 +39,13 @@ import org.killbill.billing.plugin.adyen.client.payment.service.AdyenPaymentRequ
 import org.killbill.billing.plugin.adyen.client.payment.service.AdyenPaymentServiceProviderPort;
 import org.killbill.billing.plugin.adyen.client.payment.service.Signer;
 import org.killbill.billing.plugin.api.notification.PluginTenantConfigurableConfigurationHandler;
+import org.osgi.service.log.LogService;
 
 public class AdyenConfigurationHandler extends PluginTenantConfigurableConfigurationHandler<AdyenPaymentServiceProviderPort> {
 
     private final String region;
+    private final OSGIKillbillLogService osgiKillbillLogService;
+    private final Decryptor decryptor;
 
     public AdyenConfigurationHandler(final String pluginName,
                                      final OSGIKillbillAPI osgiKillbillAPI,
@@ -45,6 +53,8 @@ public class AdyenConfigurationHandler extends PluginTenantConfigurableConfigura
                                      final String region) {
         super(pluginName, osgiKillbillAPI, osgiKillbillLogService);
         this.region = region;
+        this.osgiKillbillLogService = osgiKillbillLogService;
+        this.decryptor = DecryptorFactory.getInstance().getDecryptor();
     }
 
     @Override
@@ -67,4 +77,24 @@ public class AdyenConfigurationHandler extends PluginTenantConfigurableConfigura
 
         return new AdyenPaymentServiceProviderPort(adyenRequestFactory, adyenPaymentRequestSender);
     }
+
+
+    @Override
+    protected Properties getTenantConfigurationAsProperties(@Nullable final UUID kbTenantId) {
+        final String tenantConfigurationAsString = getTenantConfigurationAsString(kbTenantId);
+        if (tenantConfigurationAsString == null) {
+            return null;
+        }
+
+        final Properties properties = new Properties();
+        try {
+            properties.load(new StringReader(tenantConfigurationAsString));
+            decryptor.decryptProperties(properties);
+            return properties;
+        } catch (final IOException e) {
+            osgiKillbillLogService.log(LogService.LOG_WARNING, "Exception while loading properties for tenant " + kbTenantId, e);
+            return null;
+        }
+    }
+
 }

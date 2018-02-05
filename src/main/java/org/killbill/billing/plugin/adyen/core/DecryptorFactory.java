@@ -17,13 +17,27 @@
 
 package org.killbill.billing.plugin.adyen.core;
 
-import java.util.Properties;
+/*
+ * Stub class - Current impl supports Jasypt decrytion only.
+ * Extend this class if and when there is a need to support other encryption schemes
+ */
 
-public interface Decryptor {
+public class DecryptorFactory {
 
-    public static final String ENC_PREFIX = "ENC(";
-    public static final String ENC_SUFFIX = ")";
+    private static final DecryptorFactory factory = new DecryptorFactory();
+    private final Decryptor decryptor = new JasyptDecryptor();
 
-    String decrypt(String encryptedValue);
-    void decryptProperties(Properties properties);
+    private DecryptorFactory() {};
+
+    public static DecryptorFactory getInstance() {
+        return factory;
+    }
+
+    /**
+     * get the default decryptor
+     * @return the default Decryptor
+     */
+    public Decryptor getDecryptor() {
+        return decryptor;
+    }
 }
