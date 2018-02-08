@@ -74,6 +74,7 @@ public abstract class PaymentInfoMappingService {
                                             final Clock clock,
                                             @Nullable final AccountData account,
                                             @Nullable final AdyenPaymentMethodsRecord paymentMethodsRecord,
+                                            @Nullable final String shopperStatement,
                                             final Iterable<PluginProperty> properties) {
         final PaymentInfo paymentInfo;
 
@@ -101,8 +102,12 @@ public abstract class PaymentInfoMappingService {
         setInstallments(paymentInfo, properties);
         setSelectedBrand(paymentInfo, properties);
         setAcquirer(configuration, paymentInfo, properties);
-
+        setShopperStatement(paymentInfo, shopperStatement);
         return paymentInfo;
+    }
+
+    private static void setShopperStatement(final PaymentInfo paymentInfo, final String shopperStatement) {
+        paymentInfo.setShopperStatement(shopperStatement);
     }
 
     private static void set3DSecureFields(final PaymentInfo paymentInfo, final Iterable<PluginProperty> properties) {

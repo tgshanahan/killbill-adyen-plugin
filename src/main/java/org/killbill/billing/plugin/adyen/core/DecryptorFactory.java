@@ -22,22 +22,34 @@ package org.killbill.billing.plugin.adyen.core;
  * Extend this class if and when there is a need to support other encryption schemes
  */
 
-public class DecryptorFactory {
+import java.util.Optional;
 
-    private static final DecryptorFactory factory = new DecryptorFactory();
-    private final Decryptor decryptor = new JasyptDecryptor();
+public abstract class DecryptorFactory {
+    public static final String DECRYPTOR_FACTORY_PROP = "decryptorFactory.name";
 
-    private DecryptorFactory() {};
+    private static final DecryptorFactory factory;
+    private Decryptor decryptor;
+
+    static {
+        String factoryClassName = Optional.ofNullable(System.getProperty(DECRYPTOR_FACTORY_PROP))
+                                          .orElseGet(JasyptDecryptorFactory.class::getName);
+        try {
+            factory = (DecryptorFactory) Class.forName(factoryClassName).newInstance();
+        } catch (Throwable e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     public static DecryptorFactory getInstance() {
         return factory;
     }
 
-    /**
-     * get the default decryptor
-     * @return the default Decryptor
-     */
-    public Decryptor getDecryptor() {
+    public synchronized Decryptor getDecryptor() {
+        if (decryptor == null) {
+            decryptor = createDecryptor();
+        }
         return decryptor;
     }
+
+    protected abstract Decryptor createDecryptor();
 }

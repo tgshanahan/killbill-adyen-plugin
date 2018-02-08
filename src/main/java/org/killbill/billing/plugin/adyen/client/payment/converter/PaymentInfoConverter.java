@@ -53,8 +53,13 @@ public class PaymentInfoConverter<T extends PaymentInfo> {
         setBillingAddress(paymentInfo, paymentRequest);
         setAcquirer(paymentInfo, paymentRequest);
         setSelectedBrand(paymentInfo, paymentRequest);
+        setShopperStatement(paymentInfo, paymentRequest);
 
         return paymentRequest;
+    }
+
+    private void setShopperStatement(final PaymentInfo paymentInfo, final PaymentRequest paymentRequest) {
+        paymentRequest.setShopperStatement(paymentInfo.getShopperStatement());
     }
 
     private void setCaptureDelayHours(final PaymentInfo paymentInfo, final PaymentRequest paymentRequest) {

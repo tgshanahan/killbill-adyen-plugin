@@ -110,6 +110,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
 
     // Shared properties
     public static final String PROPERTY_PAYMENT_PROCESSOR_ACCOUNT_ID = "paymentProcessorAccountId";
+    public static final String PROPERTY_SHOPPER_STATEMENT = "shopperStatement";
     public static final String PROPERTY_ACQUIRER = "acquirer";
     public static final String PROPERTY_ACQUIRER_MID = "acquirerMID";
     public static final String PROPERTY_SELECTED_BRAND = "selectedBrand";
@@ -881,7 +882,11 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
     private PaymentInfo buildPaymentInfo(final String merchantAccount, final String countryCode, final AccountData account, @Nullable final AdyenPaymentMethodsRecord paymentMethodsRecord, final Iterable<PluginProperty> properties, final TenantContext context) {
         // A bit of a hack - it would be nice to be able to isolate AdyenConfigProperties
         final AdyenConfigProperties adyenConfigProperties = getConfigProperties(context);
-        return PaymentInfoMappingService.toPaymentInfo(merchantAccount, countryCode, adyenConfigProperties, clock, account, paymentMethodsRecord, properties);
+
+        // Added for SquareTrade. This may not be the best place for this esp. if we may have different shopper statements for different charge types (e.g., refund).
+        final String shopperStatement = getShopperStatement(merchantAccount, adyenConfigProperties, properties);
+
+        return PaymentInfoMappingService.toPaymentInfo(merchantAccount, countryCode, adyenConfigProperties, clock, account, paymentMethodsRecord, shopperStatement, properties);
     }
 
     /**
@@ -991,6 +996,15 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
         }
 
         return getConfigProperties(context).getMerchantAccount(countryCode);
+    }
+
+    private String getShopperStatement(final String merchantAccount, final AdyenConfigProperties adyenConfigProperties, final Iterable<PluginProperty> properties) {
+        final String pluginPropertyShopperStatement = PluginProperties.findPluginPropertyValue(PROPERTY_SHOPPER_STATEMENT, properties);
+        if (pluginPropertyShopperStatement != null) {
+            return pluginPropertyShopperStatement;
+        }
+
+        return adyenConfigProperties.getShopperStatement(merchantAccount);
     }
 
     private String getMerchantAccountFromRecord(final AdyenResponsesRecord adyenResponsesRecord) {

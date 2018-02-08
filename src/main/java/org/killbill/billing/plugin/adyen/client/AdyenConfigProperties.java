@@ -66,8 +66,10 @@ public class AdyenConfigProperties {
     private final Map<String, String> regionToPaymentUrlMap = new LinkedHashMap<String, String>();
     private final Map<String, String> regionToRecurringUrlMap = new LinkedHashMap<String, String>();
     private final Map<String, String> regionToDirectoryUrlMap = new LinkedHashMap<String, String>();
+    private final Map<String, String> merchantAccountToShopperStatementMap = new LinkedHashMap<>();
 
     private final String merchantAccounts;
+    private final String shopperStatements;
     private final String userNames;
     private final String passwords;
     private final String skins;
@@ -138,6 +140,16 @@ public class AdyenConfigProperties {
 
         this.merchantAccounts = properties.getProperty(PROPERTY_PREFIX + "merchantAccount");
         refillMap(countryToMerchantAccountMap, merchantAccounts);
+
+        this.shopperStatements = properties.getProperty(PROPERTY_PREFIX + "shopperStatement");
+        final Map<String, String> countryOrMerchantAccountToShopperStatementMap = new LinkedHashMap<String, String>();
+        refillMap(countryOrMerchantAccountToShopperStatementMap, shopperStatements);
+        for (final String countryOrMerchantAccount : countryOrMerchantAccountToShopperStatementMap.keySet()) {
+            final String merchantAccountOrNull = countryToMerchantAccountMap.get(countryOrMerchantAccount);
+            final String merchantAccount = MoreObjects.firstNonNull(merchantAccountOrNull, countryOrMerchantAccount);
+            final String shopperStatement = countryOrMerchantAccountToShopperStatementMap.get(countryOrMerchantAccount);
+            merchantAccountToShopperStatementMap.put(merchantAccount, shopperStatement);
+        }
 
         this.userNames = properties.getProperty(PROPERTY_PREFIX + "username");
         final Map<String, String> countryOrMerchantAccountToUsernameMap = new LinkedHashMap<String, String>();
@@ -248,6 +260,14 @@ public class AdyenConfigProperties {
             return countryToMerchantAccountMap.values().iterator().next();
         } else {
             return countryToMerchantAccountMap.get(adjustCountryCode(countryIsoCode));
+        }
+    }
+
+    public String getShopperStatement(final String merchantAccount) {
+        if (merchantAccountToShopperStatementMap.isEmpty()) {
+            return shopperStatements;
+        } else {
+            return merchantAccountToShopperStatementMap.get(merchantAccount);
         }
     }
 
