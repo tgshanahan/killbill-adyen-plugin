@@ -51,10 +51,18 @@ public class AdyenConfigurationHandler extends PluginTenantConfigurableConfigura
                                      final OSGIKillbillAPI osgiKillbillAPI,
                                      final OSGIKillbillLogService osgiKillbillLogService,
                                      final String region) {
+        this(pluginName, osgiKillbillAPI, osgiKillbillLogService, region, DecryptorFactory.getInstance().getDecryptor());
+    }
+
+    public AdyenConfigurationHandler(final String pluginName,
+                                     final OSGIKillbillAPI osgiKillbillAPI,
+                                     final OSGIKillbillLogService osgiKillbillLogService,
+                                     final String region,
+                                     final Decryptor decryptor) {
         super(pluginName, osgiKillbillAPI, osgiKillbillLogService);
         this.region = region;
         this.osgiKillbillLogService = osgiKillbillLogService;
-        this.decryptor = DecryptorFactory.getInstance().getDecryptor();
+        this.decryptor = decryptor;
     }
 
     @Override
