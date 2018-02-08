@@ -45,6 +45,7 @@ import org.killbill.billing.plugin.adyen.core.AdyenConfigPropertiesConfiguration
 import org.killbill.billing.plugin.adyen.core.AdyenConfigurationHandler;
 import org.killbill.billing.plugin.adyen.core.AdyenHostedPaymentPageConfigurationHandler;
 import org.killbill.billing.plugin.adyen.core.AdyenRecurringConfigurationHandler;
+import org.killbill.billing.plugin.adyen.core.DecryptorFactory;
 import org.mockito.Mockito;
 import org.testng.annotations.BeforeClass;
 
@@ -95,6 +96,8 @@ public abstract class TestRemoteBase {
         properties = TestUtils.loadProperties(PROPERTIES_FILE_NAME);
         adyenConfigProperties = getAdyenConfigProperties();
 
+        setupTestDecryptorFactory();
+
         final PaymentInfoConverterManagement paymentInfoConverterManagement = new PaymentInfoConverterService();
 
         final Signer signer = new Signer();
@@ -132,6 +135,11 @@ public abstract class TestRemoteBase {
         adyenRecurringConfigurationHandler.setDefaultConfigurable(adyenRecurringClient);
 
         merchantAccount = adyenConfigProperties.getMerchantAccount(DEFAULT_COUNTRY);
+    }
+
+    private void setupTestDecryptorFactory() {
+        // TODO: should this be injected via guice?
+        System.setProperty(DecryptorFactory.DECRYPTOR_FACTORY_PROP, TestDecryptorFactory.class.getName());
     }
 
     private AdyenConfigProperties getAdyenConfigProperties() throws IOException {
