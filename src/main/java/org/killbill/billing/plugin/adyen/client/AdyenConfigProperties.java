@@ -1,6 +1,6 @@
 /*
- * Copyright 2014-2016 Groupon, Inc
- * Copyright 2014-2016 The Billing Project, LLC
+ * Copyright 2014-2018 Groupon, Inc
+ * Copyright 2014-2018 The Billing Project, LLC
  *
  * The Billing Project licenses this file to you under the Apache License, version 2.0
  * (the "License"); you may not use this file except in compliance with the
@@ -49,6 +49,7 @@ public class AdyenConfigProperties {
                                                                                                               "sepadirectdebit");
     // Period is a bit aggressive by default. SOFORT (directEbanking) payment can take up to 14 days.
     public static final String DEFAULT_OFFLINE_BANK_TRANSFER_PENDING_PAYMENT_EXPIRATION_PERIOD = "P7d";
+    public static final String FALL_BACK_MERCHANT_ACCOUNT_KEY = "FALLBACK";
 
     private static final String PROPERTY_PREFIX = "org.killbill.billing.plugin.adyen.";
     private static final String ENTRY_DELIMITER = "|";
@@ -91,6 +92,7 @@ public class AdyenConfigProperties {
     private final String acquirersList;
     private final String paymentConnectionTimeout;
     private final String paymentReadTimeout;
+    private final String fallBackMerchantAccount;
 
     private final Period pendingPaymentExpirationPeriod;
 
@@ -101,12 +103,16 @@ public class AdyenConfigProperties {
     private final String renderCatalog;
     private final String renderSchema;
 
+    private final String invoicePaymentEnabled;
+
     public AdyenConfigProperties(final Properties properties) {
         this(properties, null);
     }
 
     public AdyenConfigProperties(final Properties properties, final String currentRegion) {
         this.currentRegion = currentRegion;
+
+        this.invoicePaymentEnabled = properties.getProperty(PROPERTY_PREFIX + "invoicePaymentEnabled", "false");
 
         this.proxyServer = properties.getProperty(PROPERTY_PREFIX + "proxyServer");
         this.proxyPort = properties.getProperty(PROPERTY_PREFIX + "proxyPort");
@@ -140,6 +146,13 @@ public class AdyenConfigProperties {
 
         this.merchantAccounts = properties.getProperty(PROPERTY_PREFIX + "merchantAccount");
         refillMap(countryToMerchantAccountMap, merchantAccounts);
+        if (this.countryToMerchantAccountMap.containsKey(FALL_BACK_MERCHANT_ACCOUNT_KEY)) {
+            this.fallBackMerchantAccount = this.countryToMerchantAccountMap.get(FALL_BACK_MERCHANT_ACCOUNT_KEY);
+            this.countryToMerchantAccountMap.remove(FALL_BACK_MERCHANT_ACCOUNT_KEY);
+        }
+        else {
+            this.fallBackMerchantAccount = null;
+        }
 
         this.shopperStatements = properties.getProperty(PROPERTY_PREFIX + "shopperStatement");
         final Map<String, String> countryOrMerchantAccountToShopperStatementMap = new LinkedHashMap<String, String>();
@@ -252,14 +265,22 @@ public class AdyenConfigProperties {
         return Period.parse(DEFAULT_PENDING_3DS_PAYMENT_EXPIRATION_PERIOD);
     }
 
+    public Boolean getInvoicePaymentEnabled() {
+        return Boolean.valueOf(invoicePaymentEnabled);
+    }
+
     public String getMerchantAccount(final String countryIsoCode) {
         if (countryToMerchantAccountMap.isEmpty()) {
             return merchantAccounts;
         } else if (countryIsoCode == null) {
-            // In case no country is specified, but the user configured the merchant accounts per country, take the first one
-            return countryToMerchantAccountMap.values().iterator().next();
+            // In case no country is specified, but the user configured the merchant accounts per country, take the fallback one if configured. Otherwise, take the first one.
+            return MoreObjects.firstNonNull(fallBackMerchantAccount, countryToMerchantAccountMap.values().iterator().next());
         } else {
-            return countryToMerchantAccountMap.get(adjustCountryCode(countryIsoCode));
+            try {
+                return MoreObjects.firstNonNull(countryToMerchantAccountMap.get(adjustCountryCode(countryIsoCode)), fallBackMerchantAccount);
+            } catch (NullPointerException exception) {
+                throw new IllegalStateException(String.format("Failed to find merchant account for countryCode='%s'", countryIsoCode), exception);
+            }
         }
     }
 
