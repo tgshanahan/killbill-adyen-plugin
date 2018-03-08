@@ -596,4 +596,20 @@
             </build>
         </profile>
     </profiles>
+
+    <!-- Squaretrade nexus repository -->
+    <distributionManagement>
+        <snapshotRepository>
+            <id>snapshots</id>
+            <name>ST Snapshots</name>
+            <url>http://nexus.squaretrade.com/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+    <repositories>
+        <repository>
+            <id>snapshots</id>
+            <name>ST Snapshots</name>
+            <url>http://nexus.squaretrade.com/content/repositories/snapshots</url>
+        </repository>
+    </repositories>
 </project>
