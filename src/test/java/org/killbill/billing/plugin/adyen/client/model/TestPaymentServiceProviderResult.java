@@ -36,5 +36,8 @@ public class TestPaymentServiceProviderResult {
         Assert.assertEquals(PaymentServiceProviderResult.getPaymentResultForId("CANCELLED"), PaymentServiceProviderResult.CANCELLED);
         Assert.assertEquals(PaymentServiceProviderResult.getPaymentResultForId("PENDING"), PaymentServiceProviderResult.PENDING);
         Assert.assertEquals(PaymentServiceProviderResult.getPaymentResultForId("ERROR"), PaymentServiceProviderResult.ERROR);
+
+        Assert.assertEquals(PaymentServiceProviderResult.getPaymentResultForId("[refund-received]   "), PaymentServiceProviderResult.RECEIVED);
+
     }
 }

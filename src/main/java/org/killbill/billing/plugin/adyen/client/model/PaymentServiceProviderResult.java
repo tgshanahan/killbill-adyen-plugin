@@ -60,12 +60,14 @@ public enum PaymentServiceProviderResult {
             return ERROR;
         }
 
-        final PaymentServiceProviderResult result = REVERSE_LOOKUP.get(id);
+        String trimmedId = id.trim();
+
+        final PaymentServiceProviderResult result = REVERSE_LOOKUP.get(trimmedId);
         if (result != null) {
             return result;
         } else {
             // For HPP completion flow (see https://docs.adyen.com/developers/hpp-manual#hpppaymentresponse)
-            return PaymentServiceProviderResult.valueOf(id);
+            return PaymentServiceProviderResult.valueOf(trimmedId);
         }
     }
 
