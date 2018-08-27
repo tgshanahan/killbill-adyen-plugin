@@ -31,16 +31,12 @@ import javax.annotation.Nullable;
 import javax.sql.DataSource;
 
 import org.joda.time.DateTime;
-import org.jooq.SQLDialect;
 import org.jooq.UpdateSetMoreStep;
-import org.jooq.conf.MappedSchema;
-import org.jooq.conf.RenderNameStyle;
 import org.jooq.impl.DSL;
 import org.killbill.billing.catalog.api.Currency;
 import org.killbill.billing.payment.api.PluginProperty;
 import org.killbill.billing.payment.api.TransactionType;
 import org.killbill.billing.plugin.adyen.api.AdyenPaymentPluginApi;
-import org.killbill.billing.plugin.adyen.client.AdyenConfigProperties;
 import org.killbill.billing.plugin.adyen.client.model.NotificationItem;
 import org.killbill.billing.plugin.adyen.client.model.PaymentModificationResponse;
 import org.killbill.billing.plugin.adyen.client.model.PaymentServiceProviderResult;
@@ -52,10 +48,7 @@ import org.killbill.billing.plugin.adyen.dao.gen.tables.records.AdyenNotificatio
 import org.killbill.billing.plugin.adyen.dao.gen.tables.records.AdyenPaymentMethodsRecord;
 import org.killbill.billing.plugin.adyen.dao.gen.tables.records.AdyenResponsesRecord;
 import org.killbill.billing.plugin.api.PluginProperties;
-import org.killbill.billing.plugin.api.payment.PluginPaymentPluginApi;
 import org.killbill.billing.plugin.dao.payment.PluginPaymentDao;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
@@ -75,8 +68,6 @@ import static org.killbill.billing.plugin.adyen.dao.gen.tables.AdyenPaymentMetho
 import static org.killbill.billing.plugin.adyen.dao.gen.tables.AdyenResponses.ADYEN_RESPONSES;
 
 public class AdyenDao extends PluginPaymentDao<AdyenResponsesRecord, AdyenResponses, AdyenPaymentMethodsRecord, AdyenPaymentMethods> {
-
-    private static final Logger logger = LoggerFactory.getLogger(AdyenDao.class);
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Joiner JOINER = Joiner.on(",");
@@ -103,6 +94,7 @@ public class AdyenDao extends PluginPaymentDao<AdyenResponsesRecord, AdyenRespon
                     }
                 });
     }
+
     // HPP requests
 
     public void addHppRequest(final UUID kbAccountId,
