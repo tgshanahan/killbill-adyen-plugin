@@ -152,6 +152,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
     public static final String PROPERTY_DD_BANK_IDENTIFIER_CODE = "ddBic";
     // ELV only (processed as SEPA)
     public static final String PROPERTY_ELV_BLZ = "elvBlz";
+    public static final String PROPERTY_SEPA_COUNTRY_CODE = "sepaCountryCode";
 
     // User data
     public static final String PROPERTY_FIRST_NAME = "firstName";
@@ -962,6 +963,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
                                                                        kbPaymentId,
                                                                        paymentData.getAmount(),
                                                                        paymentData.getCurrency(),
+                                                                       clock.getUTCNow(),
                                                                        paymentExternalKey,
                                                                        paymentTransactionExternalKey,
                                                                        purchaseProperties,
@@ -972,6 +974,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
                                                                   kbPaymentId,
                                                                   paymentData.getAmount(),
                                                                   paymentData.getCurrency(),
+                                                                  clock.getUTCNow(),
                                                                   paymentExternalKey,
                                                                   paymentTransactionExternalKey,
                                                                   purchaseProperties,
@@ -985,7 +988,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
     // Could be shared (see KillbillAdyenNotificationHandler)
     private UUID getAdyenKbPaymentMethodId(final UUID kbAccountId, final TenantContext context) throws PaymentApiException {
         //noinspection RedundantTypeArguments
-        return Iterables.<PaymentMethod>find(killbillAPI.getPaymentApi().getAccountPaymentMethods(kbAccountId, false, ImmutableList.<PluginProperty>of(), context),
+        return Iterables.<PaymentMethod>find(killbillAPI.getPaymentApi().getAccountPaymentMethods(kbAccountId, false, false, ImmutableList.<PluginProperty>of(), context),
                               new Predicate<PaymentMethod>() {
                                   @Override
                                   public boolean apply(final PaymentMethod paymentMethod) {
