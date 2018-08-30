@@ -15,6 +15,8 @@ Kill Bill compatibility
 | 0.3.y          | 0.16.z            |
 | 0.4.y          | 0.17.z            |
 | 0.5.y          | 0.18.z            |
+| 0.6.y          | 0.19.z            |
+| 0.7.y          | 0.20.z            |
 
 Requirements
 ------------
@@ -445,6 +447,7 @@ Plugin properties
 | zip                      | Billing address zip code                      |
 | state                    | Billing address state                         |
 | country                  | Billing address country                       |
+| sepaCountryCode          | Billing address country code for SEPA requests. If absent, it will use country instead |
 | PaReq                    | 3D-Secure Pa Request                          |
 | PaRes                    | 3D-Secure Pa Response                         |
 | MD                       | 3D-Secure Message Digest                      |
