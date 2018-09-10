@@ -551,6 +551,8 @@
                             <archive>
                                 <manifestFile>target/classes/META-INF/MANIFEST.MF</manifestFile>
                             </archive>
+			    <!-- breynolds: prevent artifacts from being uploaded twice and failing b/c you can't upload release artifacts more than once. -->
+		            <attach>false</attach>
                         </configuration>
                     </execution>
                 </executions>
