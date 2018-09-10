@@ -1,3 +1,8 @@
+Squaretrade Notes:
+=====================
+When deploying release artifacts you will get an error, which is due to this pom configuration which is causing
+duplicate deploys. The error is OK as long as the first deploy works.  Check nexus to be sure.
+
 killbill-adyen-plugin
 =====================
 

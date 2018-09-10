@@ -346,7 +346,10 @@
                         <Export-Package>
                             org.killbill.billing.plugin.service
                         </Export-Package>
-                        <Private-Package>org.killbill.billing.plugin.adyen.*</Private-Package>
+                        <Private-Package>
+			    org.killbill.billing.plugin.adyen.*;
+                            org.killbill.adyen.*;
+                        </Private-Package>
                         <!-- Optional resolution because exported by the Felix system bundle -->
                         <Import-Package>
                             org.killbill.billing.account.api;
@@ -551,8 +554,6 @@
                             <archive>
                                 <manifestFile>target/classes/META-INF/MANIFEST.MF</manifestFile>
                             </archive>
-			    <!-- breynolds: prevent artifacts from being uploaded twice and failing b/c you can't upload release artifacts more than once. -->
-		            <attach>false</attach>
                         </configuration>
                     </execution>
                 </executions>
