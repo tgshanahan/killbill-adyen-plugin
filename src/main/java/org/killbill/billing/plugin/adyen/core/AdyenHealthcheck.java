@@ -47,6 +47,11 @@ public class AdyenHealthcheck implements Healthcheck {
     @Override
     public HealthStatus getHealthStatus(@Nullable final Tenant tenant, @Nullable final Map properties) {
         final AdyenConfigProperties adyenConfigProperties = adyenConfigPropertiesConfigurationHandler.getConfigurable(tenant == null ? null : tenant.getId());
+
+        if (!adyenConfigProperties.getShouldPerformHealthCheck()) {
+            return HealthStatus.healthy("Health check skipped per configuration, assumed healthy.");
+        }
+
         return pingAdyen(adyenConfigProperties);
     }
 
