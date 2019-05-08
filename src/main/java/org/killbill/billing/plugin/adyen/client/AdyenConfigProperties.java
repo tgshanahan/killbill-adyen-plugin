@@ -104,6 +104,7 @@ public class AdyenConfigProperties {
 
     private final String invoicePaymentEnabled;
     private final Set<String> chargebackAsFailurePaymentMethods;
+    private final String shouldPerformHealthCheck;
 
     public AdyenConfigProperties(final Properties properties) {
         this(properties, null);
@@ -114,6 +115,7 @@ public class AdyenConfigProperties {
 
         this.invoicePaymentEnabled = properties.getProperty(PROPERTY_PREFIX + "invoicePaymentEnabled", "false");
         this.chargebackAsFailurePaymentMethods = ImmutableSet.<String>copyOf(properties.getProperty(PROPERTY_PREFIX + "chargebackAsFailurePaymentMethods", "").split(","));
+        this.shouldPerformHealthCheck = properties.getProperty(PROPERTY_PREFIX + "shouldPerformHealthCheck", "true");
 
         this.proxyServer = properties.getProperty(PROPERTY_PREFIX + "proxyServer");
         this.proxyPort = properties.getProperty(PROPERTY_PREFIX + "proxyPort");
@@ -270,6 +272,8 @@ public class AdyenConfigProperties {
     public Set<String> getChargebackAsFailurePaymentMethods() {
         return chargebackAsFailurePaymentMethods;
     }
+
+    public Boolean getShouldPerformHealthCheck() { return Boolean.valueOf(shouldPerformHealthCheck); }
 
     public String getMerchantAccount(final String countryIsoCode) {
         if (countryToMerchantAccountMap.isEmpty()) {
