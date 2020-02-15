@@ -52,7 +52,7 @@ public class TestPaymentRequest3DBuilder extends BaseTestPaymentRequestBuilder {
         final PaymentRequest3D paymentRequest = builder.build();
 
         Assert.assertEquals(paymentRequest.getMerchantAccount(), merchantAccount);
-        Assert.assertEquals(paymentRequest.getAmount().getValue(), (Long) 2000L);
+        Assert.assertEquals((Long)paymentRequest.getAmount().getValue(), (Long) 2000L);
         Assert.assertEquals(paymentRequest.getAmount().getCurrency(), "EUR");
         Assert.assertEquals(paymentRequest.getReference(), paymentTransactionExternalKey);
     }
@@ -106,7 +106,7 @@ public class TestPaymentRequest3DBuilder extends BaseTestPaymentRequestBuilder {
         final PaymentRequest3D paymentRequest = builder.build();
 
         Assert.assertEquals(paymentRequest.getMerchantAccount(), merchantAccount);
-        Assert.assertEquals(paymentRequest.getAmount().getValue(), (Long) 2000L);
+        Assert.assertEquals((Long)paymentRequest.getAmount().getValue(), (Long) 2000L);
         Assert.assertEquals(paymentRequest.getAmount().getCurrency(), "EUR");
         Assert.assertEquals(paymentRequest.getReference(), paymentTransactionExternalKey);
         Assert.assertEquals(paymentRequest.getShopperIP(), userData.getShopperIP());

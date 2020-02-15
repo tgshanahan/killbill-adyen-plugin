@@ -85,7 +85,7 @@ public class TestModificationRequestBuilder extends BaseTestPaymentRequestBuilde
         final ModificationRequest modificationRequest = builder.build();
 
         Assert.assertEquals(modificationRequest.getMerchantAccount(), merchantAccount);
-        Assert.assertEquals(modificationRequest.getModificationAmount().getValue(), (Long) 2000L);
+        Assert.assertEquals((Long)modificationRequest.getModificationAmount().getValue(), (Long) 2000L);
         Assert.assertEquals(modificationRequest.getOriginalReference(), originalReference);
         Assert.assertEquals(modificationRequest.getReference(), paymentTransactionExternalKey);
 

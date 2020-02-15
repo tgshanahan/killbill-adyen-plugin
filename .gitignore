@@ -56,16 +56,8 @@ fabric.properties
 ### Intellij+iml Patch ###
 # Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-249601023
 
+.idea/
 *.iml
-modules.xml
-.idea/misc.xml
-*.ipr
-
-### Misc. ###
-.idea/kotlinc.xml
-.idea/sbt.xml
-.idea/vcs.xml
-.idea/dbnavigator.xml
 
 #
 # https://github.com/github/gitignore/blob/master/Java.gitignore

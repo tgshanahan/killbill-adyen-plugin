@@ -17,6 +17,7 @@
 
 package org.killbill.billing.plugin.adyen.client;
 
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -40,6 +41,7 @@ public class AdyenConfigProperties {
 
     public static final String DEFAULT_PENDING_PAYMENT_EXPIRATION_PERIOD = "P3d";
     public static final String DEFAULT_PENDING_3DS_PAYMENT_EXPIRATION_PERIOD = "PT3h";
+    public static final String DEFAULT_PENDING_HPP_PAYMENT_WITHOUT_COMPLETION_EXPIRATION_PERIOD = "PT3h";
     // Online (real-time) bank transfers offer merchants payment with immediate online authorisation via a customer’s bank, usually followed by next-day settlement.
     public static final List<String> DEFAULT_ONLINE_BANK_TRANSFER_PAYMENT_METHODS = ImmutableList.<String>of("giropay", "ideal", "paypal");
     // Period is a bit generous by default. Decision is synchronous with the redirect, but Adyen might have notification delays.
@@ -59,6 +61,7 @@ public class AdyenConfigProperties {
     private static final String DEFAULT_CONNECTION_TIMEOUT = "30000";
     private static final String DEFAULT_READ_TIMEOUT = "60000";
 
+    private final Map<String, String> paymentProcessorAccountIdToMerchantAccountMap = new LinkedHashMap<>();
     private final Map<String, String> countryToMerchantAccountMap = new LinkedHashMap<String, String>();
     private final Map<String, String> merchantAccountToUsernameMap = new LinkedHashMap<String, String>();
     private final Map<String, String> usernameToPasswordMap = new LinkedHashMap<String, String>();
@@ -69,6 +72,8 @@ public class AdyenConfigProperties {
     private final Map<String, String> regionToPaymentUrlMap = new LinkedHashMap<String, String>();
     private final Map<String, String> regionToRecurringUrlMap = new LinkedHashMap<String, String>();
     private final Map<String, String> regionToDirectoryUrlMap = new LinkedHashMap<String, String>();
+    private final List<String> sensitivePropertyKeys = new ArrayList<>();
+    private final List<String> persistablePluginProperties = new ArrayList<>();
     private final Map<String, String> merchantAccountToShopperStatementMap = new LinkedHashMap<>();
 
     private final String merchantAccounts;
@@ -95,8 +100,12 @@ public class AdyenConfigProperties {
     private final String paymentConnectionTimeout;
     private final String paymentReadTimeout;
     private final String fallBackMerchantAccount;
+    private final String rbacUsername;
+    private final String rbacPassword;
 
     private final Period pendingPaymentExpirationPeriod;
+
+    private final Period pendingHppPaymentWithoutCompletionExpirationPeriod;
 
     private final Period pending3DsPaymentExpirationPeriod;
 
@@ -144,6 +153,7 @@ public class AdyenConfigProperties {
 
         this.pendingPaymentExpirationPeriod = readPendingExpirationProperty(properties);
         this.pending3DsPaymentExpirationPeriod = read3DsPendingExpirationProperty(properties);
+        this.pendingHppPaymentWithoutCompletionExpirationPeriod = readPendingHppPaymentWithoutCompletionExpirationPeriod(properties);
 
         this.acquirersList = properties.getProperty(PROPERTY_PREFIX + "acquirersList");
 
@@ -216,6 +226,32 @@ public class AdyenConfigProperties {
             final String secretAlgorithm = countryOrSkinToSecretAlgorithmMap.get(countryOrSkin);
             skinToSecretAlgorithmMap.put(skin, secretAlgorithm);
         }
+
+        readConfigurationValuesToList(properties.getProperty(PROPERTY_PREFIX + "sensitiveProperties"), sensitivePropertyKeys);
+        readConfigurationValuesToList(properties.getProperty(PROPERTY_PREFIX + "persistablePluginProperties"), persistablePluginProperties);
+
+        this.rbacUsername = properties.getProperty(PROPERTY_PREFIX + "rbacUsername");
+        this.rbacPassword = properties.getProperty(PROPERTY_PREFIX + "rbacPassword");
+    }
+
+    private void readConfigurationValuesToList(final String property, final List<String> outputList) {
+        outputList.clear();
+        if(!Strings.isNullOrEmpty(property)) {
+            for (final String entry : property.split("\\" + ENTRY_DELIMITER)) {
+                outputList.add(entry);
+            }
+        }
+    }
+
+    private Period readPendingHppPaymentWithoutCompletionExpirationPeriod(final Properties properties) {
+        final String value = properties.getProperty(PROPERTY_PREFIX + "pendingHppPaymentWithoutCompletionExpirationPeriod");
+        if (value != null) {
+            try {
+                return Period.parse(value);
+            } catch (final IllegalArgumentException e) { /* Ignore */ }
+        }
+
+        return Period.parse(DEFAULT_PENDING_HPP_PAYMENT_WITHOUT_COMPLETION_EXPIRATION_PERIOD);
     }
 
     private Period readPendingExpirationProperty(final Properties properties) {
@@ -399,6 +435,10 @@ public class AdyenConfigProperties {
         return paymentReadTimeout;
     }
 
+    public List<String> getSensitivePropertyKeys() {
+        return sensitivePropertyKeys;
+    }
+
     public String getRecurringUrl() {
         final String perRegionUrl = currentRegion == null ? null : regionToRecurringUrlMap.get(currentRegion);
         return perRegionUrl != null ? perRegionUrl : defaultRecurringUrl;
@@ -458,4 +498,23 @@ public class AdyenConfigProperties {
         }
     }
 
+    public Period getPendingHppPaymentWithoutCompletionExpirationPeriod(@Nullable final String paymentMethod) {
+        if (paymentMethod != null && paymentMethodToExpirationPeriod.get(paymentMethod.toLowerCase()) != null) {
+            return paymentMethodToExpirationPeriod.get(paymentMethod.toLowerCase());
+        } else {
+            return pendingHppPaymentWithoutCompletionExpirationPeriod;
+        }
+    }
+
+    public List<String> getPersistablePluginProperties() {
+        return persistablePluginProperties;
+    }
+
+    public String getRbacUsername() {
+        return rbacUsername;
+    }
+
+    public String getRbacPassword() {
+        return rbacPassword;
+    }
 }
