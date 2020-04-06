@@ -26,7 +26,7 @@
     <groupId>org.kill-bill.billing.plugin.java</groupId>
     <artifactId>adyen-plugin</artifactId>
     <name>Kill Bill OSGI Adyen plugin</name>
-    <version>0.8.0-4</version>
+    <version>0.8.0-4-SNAPSHOT</version>
     <packaging>bundle</packaging>
     <description>Kill Bill Adyen plugin</description>
     <url>http://github.com/killbill/killbill-adyen-plugin</url>
@@ -225,12 +225,22 @@
         </dependency>
         <dependency>
             <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-distribution-manifest</artifactId>
+            <version>${cxf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
             <artifactId>cxf-rt-frontend-jaxws</artifactId>
             <version>${cxf.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.cxf</groupId>
             <artifactId>cxf-rt-transports-http</artifactId>
+            <version>${cxf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-transports-http-jetty</artifactId>
             <version>${cxf.version}</version>
         </dependency>
         <dependency>

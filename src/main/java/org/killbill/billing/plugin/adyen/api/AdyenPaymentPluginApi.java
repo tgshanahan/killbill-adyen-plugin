@@ -496,6 +496,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
 
     @Override
     public PaymentTransactionInfoPlugin authorizePayment(final UUID kbAccountId, final UUID kbPaymentId, final UUID kbTransactionId, final UUID kbPaymentMethodId, final BigDecimal amount, final Currency currency, final Iterable<PluginProperty> properties, final CallContext context) throws PaymentPluginApiException {
+        logger.error("starting killbill-adyen plugin authorizePayment");
         final AdyenResponsesRecord adyenResponsesRecord = fetchResponseIfExist(kbPaymentId, context.getTenantId());
         final boolean isHPPCompletionWithPendingPayment = adyenResponsesRecord != null && Boolean.valueOf(MoreObjects.firstNonNull(AdyenDao.fromAdditionalData(adyenResponsesRecord.getAdditionalData()).get(PROPERTY_FROM_HPP), false).toString());
         if (!isHPPCompletionWithPendingPayment) {
@@ -545,6 +546,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
                             ));
                 }
             }
+            logger.error("leaving killbill-adyen plugin authorizePayment");
             return result;
         } else {
             // We already have a record for that payment transaction and we just updated the response row with additional properties
@@ -559,6 +561,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
 
     @Override
     public PaymentTransactionInfoPlugin capturePayment(final UUID kbAccountId, final UUID kbPaymentId, final UUID kbTransactionId, final UUID kbPaymentMethodId, final BigDecimal amount, final Currency currency, final Iterable<PluginProperty> properties, final CallContext context) throws PaymentPluginApiException {
+        logger.error("starting killbill-adyen plugin capturePayment");
         return executeFollowUpTransaction(TransactionType.CAPTURE,
                                           new TransactionExecutor<PaymentModificationResponse>() {
                                               @Override
@@ -579,6 +582,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
 
     @Override
     public PaymentTransactionInfoPlugin purchasePayment(final UUID kbAccountId, final UUID kbPaymentId, final UUID kbTransactionId, final UUID kbPaymentMethodId, final BigDecimal amount, final Currency currency, final Iterable<PluginProperty> properties, final CallContext context) throws PaymentPluginApiException {
+        logger.error("starting killbill-adyen plugin purchasePayment");
         final AdyenResponsesRecord adyenResponsesRecord;
         try {
             adyenResponsesRecord = dao.updateResponse(kbTransactionId, properties, context.getTenantId());
@@ -590,12 +594,13 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
             // We don't have any record for that payment: we want to trigger an actual purchase (auto-capture) call
             final String captureDelayHours = PluginProperties.getValue(PROPERTY_CAPTURE_DELAY_HOURS, "0", properties);
             final Iterable<PluginProperty> overriddenProperties = PluginProperties.merge(properties, ImmutableList.<PluginProperty>of(new PluginProperty(PROPERTY_CAPTURE_DELAY_HOURS, captureDelayHours, false)));
+            logger.error("leaving 1 killbill-adyen plugin purchasePayment");
             return executeInitialTransaction(TransactionType.PURCHASE, kbAccountId, kbPaymentId, kbTransactionId, kbPaymentMethodId, amount, currency, overriddenProperties, context);
         } else {
             // We already have a record for that payment transaction and we just updated the response row with additional properties
             // (the API can be called for instance after the user is redirected back from the HPP to store the PSP reference)
         }
-
+        logger.error("leaving 2 killbill-adyen plugin purchasePayment");
         return buildPaymentTransactionInfoPlugin(adyenResponsesRecord);
     }
 
@@ -871,6 +876,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
                                                                    final Currency currency,
                                                                    final Iterable<PluginProperty> properties,
                                                                    final TenantContext context) throws PaymentPluginApiException {
+        logger.error("entering killbill-adyen plugin executeInitialTransaction");
         final Account account = getAccount(kbAccountId, context);
         final AdyenPaymentMethodsRecord nonNullPaymentMethodsRecord = getAdyenPaymentMethodsRecord(kbPaymentMethodId, context);
         final String countryCode = getCountryCode(account, nonNullPaymentMethodsRecord, properties);
@@ -916,6 +922,7 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
         addAdditionalDataFromProperty(response, properties, context);
         try {
             dao.addResponse(kbAccountId, kbPaymentId, kbTransactionId, transactionType, amount, currency, response, utcNow, context.getTenantId());
+            logger.error("leaving killbill-adyen plugin executeInitialTransaction");
             return new AdyenPaymentTransactionInfoPlugin(kbPaymentId, kbTransactionId, transactionType, amount, currency, utcNow, response);
         } catch (final SQLException e) {
             throw new PaymentPluginApiException("Payment went through, but we encountered a database error. Payment details: " + response.toString(), e);
