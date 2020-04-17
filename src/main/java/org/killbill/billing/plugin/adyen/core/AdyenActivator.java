@@ -75,7 +75,6 @@ public class AdyenActivator extends KillbillActivatorBase {
     private AdyenConfigPropertiesConfigurationHandler adyenConfigPropertiesConfigurationHandler;
     private AdyenHostedPaymentPageConfigurationHandler adyenHostedPaymentPageConfigurationHandler;
     private AdyenRecurringConfigurationHandler adyenRecurringConfigurationHandler;
-    private DelayedActionScheduler delayedActionScheduler;
 
     private static final Logger logger = LoggerFactory.getLogger(AdyenActivator.class);
 
@@ -159,8 +158,7 @@ public class AdyenActivator extends KillbillActivatorBase {
                                                                           configProperties,
                                                                           logService,
                                                                           clock,
-                                                                          dao,
-                                                                          delayedActionScheduler);
+                                                                          dao);
 
         registerPaymentPluginApi(context, pluginApi);
         registerHandlers();
@@ -168,9 +166,6 @@ public class AdyenActivator extends KillbillActivatorBase {
 
     @Override
     public void stop(final BundleContext context) throws Exception {
-        if (delayedActionScheduler != null) {
-            delayedActionScheduler.stop();
-        }
         super.stop(context);
     }
 
@@ -181,7 +176,7 @@ public class AdyenActivator extends KillbillActivatorBase {
                 new OSGIFrameworkEventHandler() {
                     @Override
                     public void started() {
-                        delayedActionScheduler.start();
+
                     }
                 });
     }

@@ -282,7 +282,6 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
     private final AdyenConfigPropertiesConfigurationHandler adyenConfigPropertiesConfigurationHandler;
     private final AdyenDao dao;
     private final AdyenNotificationService adyenNotificationService;
-    private final DelayedActionScheduler delayedActionScheduler;
 
     public AdyenPaymentPluginApi(final AdyenConfigurationHandler adyenConfigurationHandler,
                                  final AdyenConfigPropertiesConfigurationHandler adyenConfigPropertiesConfigurationHandler,
@@ -292,17 +291,13 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
                                  final OSGIConfigPropertiesService osgiConfigPropertiesService,
                                  final OSGIKillbillLogService logService,
                                  final Clock clock,
-                                 final AdyenDao dao,
-                                 final DelayedActionScheduler delayedActionScheduler) throws JAXBException {
+                                 final AdyenDao dao) throws JAXBException {
         super(killbillApi, osgiConfigPropertiesService, logService, clock, dao);
         this.adyenConfigurationHandler = adyenConfigurationHandler;
         this.adyenHppConfigurationHandler = adyenHppConfigurationHandler;
         this.adyenRecurringConfigurationHandler = adyenRecurringConfigurationHandler;
         this.adyenConfigPropertiesConfigurationHandler = adyenConfigPropertiesConfigurationHandler;
         this.dao = dao;
-        this.delayedActionScheduler = delayedActionScheduler;
-        this.delayedActionScheduler.setApi(this);
-
         final AdyenNotificationHandler adyenNotificationHandler = new KillbillAdyenNotificationHandler(adyenConfigPropertiesConfigurationHandler, killbillApi, dao, clock);
         //noinspection RedundantTypeArguments
         this.adyenNotificationService = new AdyenNotificationService(ImmutableList.<AdyenNotificationHandler>of(adyenNotificationHandler));
@@ -518,33 +513,6 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
                 final String rbacUsername = getRbacUserName(context);
                 final String rbacPassword = getRbacPassword(context);
 
-                if (PaymentServiceProviderResult.IDENTIFY_SHOPPER.getResponses()[0].equals(responsesRecord.getResultCode())) {
-                    delayedActionScheduler.scheduleAction(
-                            Duration.standardSeconds(15),
-                            new CheckForIdentifyShopperCompleted(
-                                    UUID.randomUUID(),
-                                    context.getTenantId(),
-                                    kbPaymentMethodId,
-                                    kbPaymentId,
-                                    kbTransactionId,
-                                    responsesRecord.getKbPaymentTransactionId(),
-                                    rbacUsername,
-                                    rbacPassword
-                            ));
-                } else if (PaymentServiceProviderResult.CHALLENGE_SHOPPER.getResponses()[0].equals(responsesRecord.getResultCode())) {
-                    delayedActionScheduler.scheduleAction(
-                            Duration.standardMinutes(11),
-                            new CheckForChallengeShopperCompleted(
-                                    UUID.randomUUID(),
-                                    context.getTenantId(),
-                                    kbPaymentMethodId,
-                                    kbPaymentId,
-                                    kbTransactionId,
-                                    responsesRecord.getKbPaymentTransactionId(),
-                                    rbacUsername,
-                                    rbacPassword
-                            ));
-                }
             }
             logger.error("leaving killbill-adyen plugin authorizePayment");
             return result;
