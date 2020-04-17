@@ -126,6 +126,7 @@ public class AdyenActivator extends KillbillActivatorBase {
         dbi.setSQLLog(new Slf4jLogging());
         dbi.setTransactionHandler(new RestartTransactionRunner(notificationTransactionHandler));
 
+        /* MDC leads to duplicate instance of NotificationQ
         final NotificationQueueConfig config = new ConfigurationObjectFactory(configProperties.getProperties())
                 .buildWithReplacements(NotificationQueueConfig.class,
                                        ImmutableMap.<String, String>of("instanceName", "adyen"));
@@ -135,7 +136,7 @@ public class AdyenActivator extends KillbillActivatorBase {
                 dao,
                 killbillAPI,
                 adyenConfigPropertiesConfigurationHandler);
-
+*/
         // Register the servlet
         final PluginApp pluginApp = new PluginAppBuilder(PLUGIN_NAME,
                                                          killbillAPI,
