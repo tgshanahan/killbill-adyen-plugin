@@ -141,8 +141,7 @@ public class AdyenPluginMockBuilder {
                                          configPropertiesService,
                                          logService,
                                          clock,
-                                         dao,
-                                         delayedActionScheduler);
+                                         dao);
     }
 
     public AdyenPluginMockBuilder withDatabaseAccess(final AdyenDao dao) {
