@@ -21,6 +21,7 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.net.URLDecoder;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -242,6 +243,12 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
 
     private static final String PREFIX_THREEDS = "threeds2.";
     private static final String PREFIX_THREEDS_RESPONSE_DATA = "threeds2.threeDS2ResponseData.";
+
+    public static final String ADDITIONAL_DATA_ITEM_KEY = "additionalDataItem.1.key";
+    public static final String ADDITIONAL_DATA_ITEM_VALUE = "additionalDataItem.1.value";
+    public static final String ADDITIONAL_DATA_ITEM_KEY_VALUE = "RequestedTestAcquirerResponseCode";
+    // Usage: 'STFAIL1 '
+    public static final String ST_FAIL_KEYWORD_START = "STFAIL";
 
     private static final Map<String, String> THREEDS2_ADDITIONAL_DATA_FIELDS = new ImmutableMap.Builder()
             // unfortunately Adyen is not very consistent with the naming of the property in requests/responses
@@ -556,14 +563,64 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
 
         if (adyenResponsesRecord == null) {
             // We don't have any record for that payment: we want to trigger an actual purchase (auto-capture) call
-            final String captureDelayHours = PluginProperties.getValue(PROPERTY_CAPTURE_DELAY_HOURS, "0", properties);
-            final Iterable<PluginProperty> overriddenProperties = PluginProperties.merge(properties, ImmutableList.<PluginProperty>of(new PluginProperty(PROPERTY_CAPTURE_DELAY_HOURS, captureDelayHours, false)));
+            final Account account = getAccount(kbAccountId, context);
+
+            List<PluginProperty> adjustedProperties = createAdditionalDataPropertiesBasedOnAccountName(account.getName());
+            Iterable<PluginProperty> newProperties = addPluginPropertiesToAdjustedProperties(properties, adjustedProperties);
+
+            final String captureDelayHours = PluginProperties.getValue(PROPERTY_CAPTURE_DELAY_HOURS, "0", newProperties);
+            final Iterable<PluginProperty> overriddenProperties = PluginProperties.merge(newProperties, ImmutableList.<PluginProperty>of(new PluginProperty(PROPERTY_CAPTURE_DELAY_HOURS, captureDelayHours, false)));
             return executeInitialTransaction(TransactionType.PURCHASE, kbAccountId, kbPaymentId, kbTransactionId, kbPaymentMethodId, amount, currency, overriddenProperties, context);
         } else {
             // We already have a record for that payment transaction and we just updated the response row with additional properties
             // (the API can be called for instance after the user is redirected back from the HPP to store the PSP reference)
         }
         return buildPaymentTransactionInfoPlugin(adyenResponsesRecord);
+    }
+
+    private List<PluginProperty> addPluginPropertiesToAdjustedProperties(final Iterable<PluginProperty> pluginProperties, List<PluginProperty> adjustedProperties) {
+        String conflictingItemValueName = null;
+        for (PluginProperty pluginProperty : pluginProperties) {
+            // Don't allow any old ADDITIONAL_DATA_ITEM_KEY_VALUE value pairs in
+            if (ADDITIONAL_DATA_ITEM_KEY_VALUE.equals(pluginProperty.getValue())) {
+                conflictingItemValueName = pluginProperty.getKey();
+                // Now that we are going to skip this key, we need to skip it's respective pair
+                conflictingItemValueName = conflictingItemValueName.replaceFirst("\\.key", "\\.value");
+                continue;
+            }
+
+            if (pluginProperty.getKey().equals(conflictingItemValueName)) {
+                continue;
+            }
+
+            adjustedProperties.add(pluginProperty);
+        }
+        return adjustedProperties;
+    }
+
+    private List<PluginProperty> createAdditionalDataPropertiesBasedOnAccountName(String accountName) {
+        List<PluginProperty> paymentControlPluginProperties = new ArrayList<>();
+
+        parseFailureCode(accountName)
+                .ifPresent(failureCode -> {
+                    logger.info("Found failure code {} in account name {}", failureCode, accountName);
+                    paymentControlPluginProperties.add(new PluginProperty(ADDITIONAL_DATA_ITEM_KEY, ADDITIONAL_DATA_ITEM_KEY_VALUE, false));
+                    paymentControlPluginProperties.add(new PluginProperty(ADDITIONAL_DATA_ITEM_VALUE, failureCode, false));
+                });
+        return paymentControlPluginProperties;
+    }
+
+    private java.util.Optional<String> parseFailureCode(String text) {
+        if (text == null || !text.startsWith(ST_FAIL_KEYWORD_START)) {
+            return java.util.Optional.empty();
+        }
+
+        String[] parts = text.split(" ");
+        if (parts.length < 2) {
+            throw new IllegalStateException(String.format("could not find code after '%s' in '%s'", ST_FAIL_KEYWORD_START, text));
+        }
+
+        return java.util.Optional.of(parts[1]);
     }
 
     @Override
