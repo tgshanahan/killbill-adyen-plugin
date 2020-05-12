@@ -46,6 +46,10 @@
         <!-- More recent versions than the core (JDK1.8+) -->
         <guava.version>21.0</guava.version>
         <jackson.version>2.9.5</jackson.version>
+
+        <!-- Deploy to @dev/@docker dependencies-->
+        <deploy.container>billing-core_billing-core_1</deploy.container>
+        <deploy.host>SETME</deploy.host>
     </properties>
     <dependencies>
         <dependency>
@@ -553,6 +557,44 @@
                             </archive>
                         </configuration>
                     </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- run this using mvn exec:exec@deploy-to-docker -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>deploy-to-docker</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${basedir}/dist/deploy_plugin.sh</executable>
+                            <arguments>
+                                <argument>--docker-container</argument>
+                                <argument>${deploy.container}</argument>
+                                <argument>${project.build.directory}/${project.artifactId}-${project.version}.jar</argument>
+                                <argument>/opt/eng/billing-core/bundles/plugins/java/${project.artifactId}/${project.version}/${project.artifactId}-${project.version}.jar</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>deploy-to-dev</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${basedir}/dist/deploy_plugin.sh</executable>
+                            <arguments>
+                                <argument>--host</argument>
+                                <argument>${deploy.host}</argument>
+                                <argument>${project.build.directory}/${project.artifactId}-${project.version}.jar</argument>
+                                <argument>/opt/eng/billing-core/bundles/plugins/java/${project.artifactId}/${project.version}/${project.artifactId}-${project.version}.jar</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
                 </executions>
             </plugin>
         </plugins>

@@ -857,6 +857,9 @@ public class AdyenPaymentPluginApi extends PluginPaymentPluginApi<AdyenResponses
             additionalData.put(keys.get(itemNb), values.get(itemNb));
         }
 
+        additionalData.put("autoRescue", "true");
+        additionalData.put("maxDaysToRescue", "40");
+
         return additionalData;
     }
 
